@@ -6,7 +6,31 @@
     <title>Utility Insight</title>
 </head>
 <body>
-    <h1>Hello Satish!</h1>
-    <p>This is your first web app – built from scratch 💪</p>
+    <h1>Utility Insight App</h1>
+    <p>Upload your Green Button XML file to see your energy usage!</p>
+
+    <input type="file" id="fileInput" accept=".xml" />
+    <button onclick="handleFile()">Upload and Analyze</button>
+
+    <pre id="output"></pre>
+
+    <script>
+        function handleFile() {
+            const fileInput = document.getElementById('fileInput');
+            const output = document.getElementById('output');
+
+            if (fileInput.files.length === 0) {
+                alert('Please select a file first!');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                output.textContent = text; // For now, just show the file content
+            };
+            reader.readAsText(fileInput.files[0]);
+        }
+    </script>
 </body>
 </html>
