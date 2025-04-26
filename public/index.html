@@ -33,31 +33,33 @@
 
             const readings = xmlDoc.getElementsByTagName('IntervalReading');
 
-            let totalUsageWh = 0;
+            let totalUsage = 0;
             let firstTimestamp = null;
 
             for (let i = 0; i < readings.length; i++) {
                 const reading = readings[i];
-                const value = parseInt(reading.getElementsByTagName('value')[0].textContent, 10);
-                const start = parseInt(reading.getElementsByTagName('start')[0].textContent, 10);
 
-                totalUsageWh += value;
+                const valueTag = reading.getElementsByTagName('value')[0];
+                const startTag = reading.getElementsByTagName('start')[0];
 
-                if (firstTimestamp === null || start < firstTimestamp) {
-                    firstTimestamp = start;
+                if (valueTag && startTag) {
+                    const value = parseInt(valueTag.textContent, 10);
+                    const start = parseInt(startTag.textContent, 10);
+
+                    totalUsage += value;
+
+                    if (firstTimestamp === null || start < firstTimestamp) {
+                        firstTimestamp = start;
+                    }
                 }
             }
 
-            // Convert Wh (watt-hour) to kWh (kilowatt-hour)
-            const totalUsageKWh = (totalUsageWh / 1000).toFixed(2);
-
-            // Convert timestamp to human-readable date
             const date = firstTimestamp ? new Date(firstTimestamp * 1000).toDateString() : 'Unknown';
 
             output.innerHTML = `
                 <h2>Bill Summary:</h2>
                 <p><strong>Billing Start Date:</strong> ${date}</p>
-                <p><strong>Total Energy Used:</strong> ${totalUsageKWh} kWh</p>
+                <p><strong>Total Gas Used:</strong> ${totalUsage} m³</p>
             `;
         };
         reader.readAsText(fileInput.files[0]);
