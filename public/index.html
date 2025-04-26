@@ -15,22 +15,38 @@
     <pre id="output"></pre>
 
     <script>
-        function handleFile() {
-            const fileInput = document.getElementById('fileInput');
-            const output = document.getElementById('output');
+    function handleFile() {
+        const fileInput = document.getElementById('fileInput');
+        const output = document.getElementById('output');
 
-            if (fileInput.files.length === 0) {
-                alert('Please select a file first!');
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                output.textContent = text; // For now, just show the file content
-            };
-            reader.readAsText(fileInput.files[0]);
+        if (fileInput.files.length === 0) {
+            alert('Please select a file first!');
+            return;
         }
-    </script>
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+
+            // Parse XML
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(text, "text/xml");
+
+            // Example: Read first Bill info
+            const date = xmlDoc.getElementsByTagName('Date')[0]?.textContent || 'No Date Found';
+            const usage = xmlDoc.getElementsByTagName('Usage')[0]?.textContent || 'No Usage Found';
+            const cost = xmlDoc.getElementsByTagName('Cost')[0]?.textContent || 'No Cost Found';
+
+            // Display nicely
+            output.innerHTML = `
+                <h2>Latest Bill Details:</h2>
+                <p><strong>Date:</strong> ${date}</p>
+                <p><strong>Usage:</strong> ${usage} kWh</p>
+                <p><strong>Cost:</strong> $${cost}</p>
+            `;
+        };
+        reader.readAsText(fileInput.files[0]);
+    }
+</script>
 </body>
 </html>
