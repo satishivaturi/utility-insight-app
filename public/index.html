@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+hi<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -31,7 +31,8 @@
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(text, "text/xml");
 
-            const readings = xmlDoc.getElementsByTagName('IntervalReading');
+            // Ignore namespaces
+            const readings = xmlDoc.getElementsByTagNameNS('*', 'IntervalReading');
 
             let totalUsage = 0;
             let firstTimestamp = null;
@@ -39,11 +40,11 @@
             for (let i = 0; i < readings.length; i++) {
                 const reading = readings[i];
 
-                const valueTag = reading.getElementsByTagName('value')[0];
-                const startTag = reading.getElementsByTagName('start')[0];
+                const valueTag = reading.getElementsByTagNameNS('*', 'value')[0];
+                const startTag = reading.getElementsByTagNameNS('*', 'start')[0];
 
                 if (valueTag && startTag) {
-                    const value = parseInt(valueTag.textContent, 10);
+                    const value = parseFloat(valueTag.textContent);
                     const start = parseInt(startTag.textContent, 10);
 
                     totalUsage += value;
