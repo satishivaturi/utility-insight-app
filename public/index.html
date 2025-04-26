@@ -9,6 +9,10 @@
     <h1>Utility Insight App</h1>
     <p>Upload your Green Button XML file to see your energy usage!</p>
 
+<label for="rateInput">Enter Gas Rate ($ per m³):</label>
+<input type="number" id="rateInput" step="0.01" value="0.25">
+<br><br>
+
     <input type="file" id="fileInput" accept=".xml" />
     <button onclick="handleFile()">Upload and Analyze</button>
 
@@ -18,6 +22,7 @@
     function handleFile() {
         const fileInput = document.getElementById('fileInput');
         const output = document.getElementById('output');
+        const rateInput = document.getElementById('rateInput');
 
         if (fileInput.files.length === 0) {
             alert('Please select a file first!');
@@ -31,7 +36,6 @@
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(text, "text/xml");
 
-            // Ignore namespaces
             const readings = xmlDoc.getElementsByTagNameNS('*', 'IntervalReading');
 
             let totalUsage = 0;
@@ -56,11 +60,15 @@
             }
 
             const date = firstTimestamp ? new Date(firstTimestamp * 1000).toDateString() : 'Unknown';
+            const rate = parseFloat(rateInput.value) || 0;
+
+            const estimatedBill = (totalUsage * rate).toFixed(2);
 
             output.innerHTML = `
                 <h2>Bill Summary:</h2>
                 <p><strong>Billing Start Date:</strong> ${date}</p>
                 <p><strong>Total Gas Used:</strong> ${totalUsage} m³</p>
+                <p><strong>Estimated Bill Amount:</strong> $${estimatedBill}</p>
             `;
         };
         reader.readAsText(fileInput.files[0]);
