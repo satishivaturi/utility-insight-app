@@ -35,7 +35,8 @@
           return;
         }
 
-        let monthlyData = {};
+        let pivotData = {}; // { month: { year: usage } }
+        let yearsSet = new Set();
         let firstTimestamp = null;
 
         for (let i = 0; i < readings.snapshotLength; i++) {
@@ -54,23 +55,38 @@
           }
 
           const date = new Date(start * 1000);
-          const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          const year = date.getFullYear();
+          const monthName = date.toLocaleString('default', { month: 'short' });
 
-          if (!monthlyData[yearMonth]) {
-            monthlyData[yearMonth] = 0;
-          }
+          yearsSet.add(year);
 
-          monthlyData[yearMonth] += value / 10000;
+          if (!pivotData[monthName]) pivotData[monthName] = {};
+          if (!pivotData[monthName][year]) pivotData[monthName][year] = 0;
+
+          pivotData[monthName][year] += value / 10000;
         }
+
+        const sortedMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const years = Array.from(yearsSet).sort();
 
         let html = `<h2>Bill Summary:</h2>`;
         html += `<p><strong>Billing Start Date:</strong> ${new Date(firstTimestamp * 1000).toDateString()}</p>`;
-        html += `<table border="1" cellpadding="5"><tr><th>Month</th><th>Gas Used (m³)</th><th>Estimated Bill ($)</th></tr>`;
+        html += `<table border="1" cellpadding="5"><tr><th>Month</th>`;
 
-        for (const [month, usage] of Object.entries(monthlyData)) {
-          const bill = usage * 0.25;
-          html += `<tr><td>${month}</td><td>${usage.toFixed(2)}</td><td>$${bill.toFixed(2)}</td></tr>`;
-        }
+        years.forEach(year => {
+          html += `<th>${year}</th>`;
+        });
+        html += `</tr>`;
+
+        sortedMonths.forEach(month => {
+          html += `<tr><td>${month}</td>`;
+          years.forEach(year => {
+            const usage = pivotData[month]?.[year] || 0;
+            const bill = usage * 0.25;
+            html += `<td>${usage.toFixed(1)} m³<br/>$${bill.toFixed(2)}</td>`;
+          });
+          html += `</tr>`;
+        });
 
         html += `</table>`;
         document.getElementById('billSummary').innerHTML = html;
