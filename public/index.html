@@ -38,7 +38,7 @@
 
             const readings = xmlDoc.getElementsByTagNameNS('*', 'IntervalReading');
 
-            let totalUsage = 0;
+            let monthlyData = {}; // New: store usage by month
             let firstTimestamp = null;
 
             for (let i = 0; i < readings.length; i++) {
@@ -51,7 +51,11 @@
                     const value = parseFloat(valueTag.textContent);
                     const start = parseInt(startTag.textContent, 10);
 
-                    totalUsage += value/10000;
+                    const date = new Date(start * 1000); // Convert timestamp to real date
+                    const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // e.g., 2023-05
+                    
+                    if (!monthlyData[yearMonth]) {monthlyData[yearMonth] = 0;}
+                    monthlyData[yearMonth] += value / 10000;
 
                     if (firstTimestamp === null || start < firstTimestamp) {
                         firstTimestamp = start;
@@ -65,11 +69,17 @@
             const estimatedBill = (totalUsage * rate).toFixed(2);
 
             output.innerHTML = `
-                <h2>Bill Summary:</h2>
-                <p><strong>Billing Start Date:</strong> ${date}</p>
-                <p><strong>Total Gas Used:</strong> ${totalUsage} m³</p>
-                <p><strong>Estimated Bill Amount:</strong> $${estimatedBill}</p>
-            `;
+                let billSummaryHtml = '<h2>Bill Summary:</h2><table border="1"><tr><th>Billing Month</th><th>Gas Used (m³)</th><th>Estimated Bill ($)</th></tr>';
+
+for (const [month, usage] of Object.entries(monthlyData)) {
+    const bill = usage * 0.25;
+    billSummaryHtml += `<tr><td>${month}</td><td>${usage.toFixed(2)}</td><td>$${bill.toFixed(2)}</td></tr>`;
+}
+
+billSummaryHtml += '</table>';
+
+billSummary.innerHTML = billSummaryHtml;
+
         };
         reader.readAsText(fileInput.files[0]);
     }
