@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Enbridge Bill Summary</title>
+  <title>Enbridge Gas Usage Summary</title>
 </head>
 <body>
   <h1>Upload Your Enbridge Gas Usage XML</h1>
@@ -11,42 +11,43 @@
   <div id="billSummary"></div>
 
   <script>
-    const fileInput = document.getElementById('fileInput');
-    const billSummary = document.getElementById('billSummary');
-
-    fileInput.addEventListener('change', (event) => {
+    document.getElementById('fileInput').addEventListener('change', function (event) {
       const file = event.target.files[0];
-
-      if (!file) {
-        billSummary.innerHTML = '<p>No file selected.</p>';
-        return;
-      }
+      if (!file) return;
 
       const reader = new FileReader();
 
-      reader.onload = function(e) {
-        const xmlText = e.target.result;
+      reader.onload = function (e) {
         const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+        const xmlDoc = parser.parseFromString(e.target.result, "application/xml");
 
-        const readings = xmlDoc.getElementsByTagName("IntervalReading");
+        const nsResolver = function (prefix) {
+          const ns = {
+            "espi": "http://naesb.org/espi"
+          };
+          return ns[prefix] || null;
+        };
 
-        if (readings.length === 0) {
-          billSummary.innerHTML = '<p>No usage data found in this file.</p>';
+        const readings = xmlDoc.evaluate("//espi:IntervalReading", xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+
+        if (readings.snapshotLength === 0) {
+          document.getElementById('billSummary').innerHTML = '<p>No usage data found in this file.</p>';
           return;
         }
 
-        let monthlyData = {}; // Usage by month
+        let monthlyData = {};
         let firstTimestamp = null;
 
-        for (let reading of readings) {
-          const startTag = reading.getElementsByTagName("start")[0];
-          const valueTag = reading.getElementsByTagName("value")[0];
+        for (let i = 0; i < readings.snapshotLength; i++) {
+          const reading = readings.snapshotItem(i);
 
-          if (!startTag || !valueTag) continue;
+          const startNode = reading.getElementsByTagNameNS("http://naesb.org/espi", "start")[0];
+          const valueNode = reading.getElementsByTagNameNS("http://naesb.org/espi", "value")[0];
 
-          const start = parseInt(startTag.textContent);
-          const value = parseInt(valueTag.textContent);
+          if (!startNode || !valueNode) continue;
+
+          const start = parseInt(startNode.textContent);
+          const value = parseInt(valueNode.textContent);
 
           if (!firstTimestamp || start < firstTimestamp) {
             firstTimestamp = start;
@@ -59,21 +60,20 @@
             monthlyData[yearMonth] = 0;
           }
 
-          monthlyData[yearMonth] += value / 10000; // Enbridge value is in 0.0001 m³
+          monthlyData[yearMonth] += value / 10000;
         }
 
-        // Build the output table
-        let billSummaryHtml = '<h2>Bill Summary:</h2>';
-        billSummaryHtml += `<p><strong>Billing Start Date:</strong> ${firstTimestamp ? new Date(firstTimestamp * 1000).toDateString() : 'Unknown'}</p>`;
-        billSummaryHtml += '<table border="1" cellspacing="0" cellpadding="5"><tr><th>Billing Month</th><th>Gas Used (m³)</th><th>Estimated Bill ($)</th></tr>';
+        let html = `<h2>Bill Summary:</h2>`;
+        html += `<p><strong>Billing Start Date:</strong> ${new Date(firstTimestamp * 1000).toDateString()}</p>`;
+        html += `<table border="1" cellpadding="5"><tr><th>Month</th><th>Gas Used (m³)</th><th>Estimated Bill ($)</th></tr>`;
 
         for (const [month, usage] of Object.entries(monthlyData)) {
           const bill = usage * 0.25;
-          billSummaryHtml += `<tr><td>${month}</td><td>${usage.toFixed(2)}</td><td>$${bill.toFixed(2)}</td></tr>`;
+          html += `<tr><td>${month}</td><td>${usage.toFixed(2)}</td><td>$${bill.toFixed(2)}</td></tr>`;
         }
 
-        billSummaryHtml += '</table>';
-        billSummary.innerHTML = billSummaryHtml;
+        html += `</table>`;
+        document.getElementById('billSummary').innerHTML = html;
       };
 
       reader.readAsText(file);
