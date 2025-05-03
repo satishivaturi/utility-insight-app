@@ -1,89 +1,58 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Utility Insight</title>
-</head>
-<body>
-    <h1>Utility Insight App</h1>
-    <p>Upload your Green Button XML file to see your energy usage!</p>
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const billSummary = document.getElementById('billSummary');
 
-<label for="rateInput">Enter Gas Rate ($ per m³):</label>
-<input type="number" id="rateInput" step="0.01" value="0.25">
-<br><br>
+  fileInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
 
-    <input type="file" id="fileInput" accept=".xml" />
-    <button onclick="handleFile()">Upload and Analyze</button>
+    if (!file) {
+      billSummary.innerHTML = '<p>No file selected.</p>';
+      return;
+    }
 
-    <pre id="output"></pre>
+    const reader = new FileReader();
 
-    <script>
-    function handleFile() {
-        const fileInput = document.getElementById('fileInput');
-        const output = document.getElementById('output');
-        const rateInput = document.getElementById('rateInput');
+    reader.onload = function(e) {
+      const xmlText = e.target.result;
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, "application/xml");
 
-        if (fileInput.files.length === 0) {
-            alert('Please select a file first!');
-            return;
+      const readings = xmlDoc.getElementsByTagName("IntervalReading");
+
+      let monthlyData = {}; // Store usage by year-month
+      let firstTimestamp = null;
+
+      for (let reading of readings) {
+        const start = parseInt(reading.getElementsByTagName("start")[0].textContent);
+        const value = parseInt(reading.getElementsByTagName("value")[0].textContent);
+
+        if (!firstTimestamp || start < firstTimestamp) {
+          firstTimestamp = start;
         }
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const text = e.target.result;
+        const date = new Date(start * 1000);
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(text, "text/xml");
+        if (!monthlyData[yearMonth]) {
+          monthlyData[yearMonth] = 0;
+        }
+        monthlyData[yearMonth] += value / 10000; // Convert to m³
+      }
 
-            const readings = xmlDoc.getElementsByTagNameNS('*', 'IntervalReading');
+      // Generate bill summary table
+      let billSummaryHtml = '<h2>Bill Summary:</h2>';
+      billSummaryHtml += `<p><strong>Billing Start Date:</strong> ${firstTimestamp ? new Date(firstTimestamp * 1000).toDateString() : 'Unknown'}</p>`;
+      billSummaryHtml += '<table border="1"><tr><th>Billing Month</th><th>Gas Used (m³)</th><th>Estimated Bill ($)</th></tr>';
 
-            let monthlyData = {}; // New: store usage by month
-            let firstTimestamp = null;
+      for (const [month, usage] of Object.entries(monthlyData)) {
+        const bill = usage * 0.25; // Estimate $0.25 per m³
+        billSummaryHtml += `<tr><td>${month}</td><td>${usage.toFixed(2)}</td><td>$${bill.toFixed(2)}</td></tr>`;
+      }
 
-            for (let i = 0; i < readings.length; i++) {
-                const reading = readings[i];
+      billSummaryHtml += '</table>';
+      billSummary.innerHTML = billSummaryHtml;
+    };
 
-                const valueTag = reading.getElementsByTagNameNS('*', 'value')[0];
-                const startTag = reading.getElementsByTagNameNS('*', 'start')[0];
-
-                if (valueTag && startTag) {
-                    const value = parseFloat(valueTag.textContent);
-                    const start = parseInt(startTag.textContent, 10);
-
-                    const date = new Date(start * 1000); // Convert timestamp to real date
-                    const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // e.g., 2023-05
-                    
-                    if (!monthlyData[yearMonth]) {monthlyData[yearMonth] = 0;}
-                    monthlyData[yearMonth] += value / 10000;
-
-                    if (firstTimestamp === null || start < firstTimestamp) {
-                        firstTimestamp = start;
-                    }
-                }
-            }
-
-            const date = firstTimestamp ? new Date(firstTimestamp * 1000).toDateString() : 'Unknown';
-            const rate = parseFloat(rateInput.value) || 0;
-
-            const estimatedBill = (totalUsage * rate).toFixed(2);
-
-            output.innerHTML = `
-                let billSummaryHtml = '<h2>Bill Summary:</h2><table border="1"><tr><th>Billing Month</th><th>Gas Used (m³)</th><th>Estimated Bill ($)</th></tr>';
-
-for (const [month, usage] of Object.entries(monthlyData)) {
-    const bill = usage * 0.25;
-    billSummaryHtml += `<tr><td>${month}</td><td>${usage.toFixed(2)}</td><td>$${bill.toFixed(2)}</td></tr>`;
-}
-
-billSummaryHtml += '</table>';
-
-billSummary.innerHTML = billSummaryHtml;
-
-        };
-        reader.readAsText(fileInput.files[0]);
-    }
+    reader.readAsText(file);
+  });
 </script>
-
-</body>
-</html>
